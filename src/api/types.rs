@@ -285,13 +285,11 @@ impl ItemNode {
     }
 
     fn extract_status(&self, status_field_name: &str) -> Option<String> {
-        for node in &self.field_values.nodes {
-            if let Some(fv) = node {
-                if let Some(field_ref) = &fv.field {
-                    if field_ref.name.as_deref() == Some(status_field_name) {
-                        return fv.name.clone();
-                    }
-                }
+        for fv in self.field_values.nodes.iter().flatten() {
+            if let Some(field_ref) = &fv.field
+                && field_ref.name.as_deref() == Some(status_field_name)
+            {
+                return fv.name.clone();
             }
         }
         None
