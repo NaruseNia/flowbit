@@ -50,10 +50,10 @@ impl Filter {
             }
         }
 
-        if let Some(kind) = &self.kind {
-            if &item.kind != kind {
-                return false;
-            }
+        if let Some(kind) = &self.kind
+            && &item.kind != kind
+        {
+            return false;
         }
 
         true
@@ -126,11 +126,14 @@ impl Filter {
 
 impl From<&FilterConfig> for Filter {
     fn from(config: &FilterConfig) -> Self {
-        let kind = config.kind.as_ref().and_then(|k| match k.to_lowercase().as_str() {
-            "issue" => Some(ItemKind::Issue),
-            "pr" | "pullrequest" => Some(ItemKind::PullRequest),
-            _ => None,
-        });
+        let kind = config
+            .kind
+            .as_ref()
+            .and_then(|k| match k.to_lowercase().as_str() {
+                "issue" => Some(ItemKind::Issue),
+                "pr" | "pullrequest" => Some(ItemKind::PullRequest),
+                _ => None,
+            });
 
         // For default filter, only first label is used (simple v1 behavior).
         let label = config

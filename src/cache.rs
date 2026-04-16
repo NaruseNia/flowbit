@@ -34,12 +34,12 @@ impl CacheStore {
     /// Save a snapshot to the cache file.
     pub fn save(&self, snapshot: &CachedSnapshot) -> Result<()> {
         if let Some(parent) = self.path.parent() {
-            std::fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create cache directory: {}", parent.display()))?;
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("Failed to create cache directory: {}", parent.display())
+            })?;
         }
 
-        let json = serde_json::to_string_pretty(snapshot)
-            .context("Failed to serialize cache")?;
+        let json = serde_json::to_string_pretty(snapshot).context("Failed to serialize cache")?;
         std::fs::write(&self.path, json)
             .with_context(|| format!("Failed to write cache file: {}", self.path.display()))?;
 

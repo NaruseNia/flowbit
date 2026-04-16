@@ -100,7 +100,13 @@ async fn main() -> Result<()> {
 
     // Output as JSON (Phase 1 CLI output — replaced by TUI in Phase 2)
     println!("Project: {}", data.project_title);
-    println!("Status columns: {:?}", data.status_columns.iter().map(|c| &c.name).collect::<Vec<_>>());
+    println!(
+        "Status columns: {:?}",
+        data.status_columns
+            .iter()
+            .map(|c| &c.name)
+            .collect::<Vec<_>>()
+    );
     println!("Items: {}", items.len());
     println!();
 
@@ -152,21 +158,22 @@ async fn select_project(token: &str, config: &Config) -> Result<u32> {
         io::stdin().read_line(&mut input)?;
         let input = input.trim();
 
-        if let Ok(idx) = input.parse::<usize>() {
-            if idx >= 1 && idx <= open_projects.len() {
-                let selected = open_projects[idx - 1];
-                eprintln!();
-                eprintln!("Selected: #{} — {}", selected.number, selected.title);
+        if let Ok(idx) = input.parse::<usize>()
+            && idx >= 1
+            && idx <= open_projects.len()
+        {
+            let selected = open_projects[idx - 1];
+            eprintln!();
+            eprintln!("Selected: #{} — {}", selected.number, selected.title);
 
-                // Save to config for next time
-                if let Err(e) = save_project_number(selected.number) {
-                    eprintln!("Note: Could not save selection to config: {}", e);
-                } else {
-                    eprintln!("Saved to config. Next run will use this project automatically.");
-                }
-
-                return Ok(selected.number);
+            // Save to config for next time
+            if let Err(e) = save_project_number(selected.number) {
+                eprintln!("Note: Could not save selection to config: {}", e);
+            } else {
+                eprintln!("Saved to config. Next run will use this project automatically.");
             }
+
+            return Ok(selected.number);
         }
         eprintln!("Invalid input. Try again.");
     }

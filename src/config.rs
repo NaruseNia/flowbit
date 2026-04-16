@@ -82,11 +82,11 @@ impl Config {
     /// Priority: GITHUB_TOKEN env → `gh auth token` → config file.
     pub fn github_token(&self) -> Result<String> {
         // 1. Environment variable
-        if let Ok(token) = std::env::var("GITHUB_TOKEN") {
-            if !token.is_empty() {
-                debug!("Token resolved from GITHUB_TOKEN env var");
-                return Ok(token);
-            }
+        if let Ok(token) = std::env::var("GITHUB_TOKEN")
+            && !token.is_empty()
+        {
+            debug!("Token resolved from GITHUB_TOKEN env var");
+            return Ok(token);
         }
 
         // 2. GitHub CLI
@@ -96,11 +96,11 @@ impl Config {
         }
 
         // 3. Config file
-        if let Some(token) = &self.github.token {
-            if !token.is_empty() {
-                debug!("Token resolved from config file");
-                return Ok(token.clone());
-            }
+        if let Some(token) = &self.github.token
+            && !token.is_empty()
+        {
+            debug!("Token resolved from config file");
+            return Ok(token.clone());
         }
 
         bail!(
@@ -114,10 +114,7 @@ impl Config {
 
     /// Try to get token from `gh auth token`.
     fn token_from_gh_cli() -> Option<String> {
-        let output = Command::new("gh")
-            .args(["auth", "token"])
-            .output()
-            .ok()?;
+        let output = Command::new("gh").args(["auth", "token"]).output().ok()?;
 
         if !output.status.success() {
             return None;
@@ -125,11 +122,7 @@ impl Config {
 
         let token = String::from_utf8(output.stdout).ok()?;
         let token = token.trim().to_string();
-        if token.is_empty() {
-            None
-        } else {
-            Some(token)
-        }
+        if token.is_empty() { None } else { Some(token) }
     }
 
     /// Load config from the default path (~/.config/flowbit/config.toml).
@@ -170,15 +163,11 @@ impl Config {
     fn create_template(path: &PathBuf) -> Result<()> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).with_context(|| {
-                format!(
-                    "Failed to create config directory: {}",
-                    parent.display()
-                )
+                format!("Failed to create config directory: {}", parent.display())
             })?;
         }
-        std::fs::write(path, CONFIG_TEMPLATE).with_context(|| {
-            format!("Failed to write config template: {}", path.display())
-        })?;
+        std::fs::write(path, CONFIG_TEMPLATE)
+            .with_context(|| format!("Failed to write config template: {}", path.display()))?;
         Ok(())
     }
 }

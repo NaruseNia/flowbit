@@ -23,7 +23,13 @@ pub struct ProjectData {
 }
 
 impl GithubClient {
-    pub fn new(token: &str, api_base_url: &str, owner: &str, project_number: u32, status_field_name: &str) -> Result<Self> {
+    pub fn new(
+        token: &str,
+        api_base_url: &str,
+        owner: &str,
+        project_number: u32,
+        status_field_name: &str,
+    ) -> Result<Self> {
         let mut builder = Octocrab::builder().personal_token(token.to_string());
 
         if api_base_url != "https://api.github.com" {
@@ -47,7 +53,11 @@ impl GithubClient {
 
     // --- GraphQL helper ---
 
-    async fn graphql<T: DeserializeOwned>(&self, query: &str, variables: &serde_json::Value) -> Result<T> {
+    async fn graphql<T: DeserializeOwned>(
+        &self,
+        query: &str,
+        variables: &serde_json::Value,
+    ) -> Result<T> {
         let response: serde_json::Value = self
             .octocrab
             .graphql(&serde_json::json!({
@@ -72,15 +82,18 @@ impl GithubClient {
         let variables = serde_json::json!({ "owner": self.owner });
 
         // Try as user
-        if let Ok(resp) = self.graphql::<ProjectListResponse>(queries::LIST_PROJECTS_USER, &variables).await {
-            if let Some(owner) = resp.data.user {
-                return Ok(owner.projects_v2.nodes);
-            }
+        if let Ok(resp) = self
+            .graphql::<ProjectListResponse>(queries::LIST_PROJECTS_USER, &variables)
+            .await
+            && let Some(owner) = resp.data.user
+        {
+            return Ok(owner.projects_v2.nodes);
         }
 
         // Fallback to organization
         debug!("User query failed, trying organization");
-        let resp = self.graphql::<ProjectListResponse>(queries::LIST_PROJECTS_ORG, &variables)
+        let resp = self
+            .graphql::<ProjectListResponse>(queries::LIST_PROJECTS_ORG, &variables)
             .await
             .context("Failed to list projects (tried both user and organization)")?;
 
@@ -113,25 +126,28 @@ impl GithubClient {
         });
 
         // Try as user first
-        if let Ok(data) = self.graphql::<MetadataResponse>(queries::PROJECT_METADATA, &variables).await {
-            if let Ok(result) = self.parse_metadata(data) {
-                return Ok(result);
-            }
+        if let Ok(data) = self
+            .graphql::<MetadataResponse>(queries::PROJECT_METADATA, &variables)
+            .await
+            && let Ok(result) = self.parse_metadata(data)
+        {
+            return Ok(result);
         }
 
         // Fallback to organization
         debug!("User query failed, trying organization query");
-        let data = self.graphql::<MetadataResponse>(queries::PROJECT_METADATA_ORG, &variables)
+        let data = self
+            .graphql::<MetadataResponse>(queries::PROJECT_METADATA_ORG, &variables)
             .await
             .context("Failed to fetch project metadata (tried both user and organization)")?;
         self.parse_metadata(data)
     }
 
-    fn parse_metadata(&self, response: MetadataResponse) -> Result<(String, String, Vec<StatusColumn>)> {
-        let owner = response
-            .data
-            .user
-            .context("Project owner not found")?;
+    fn parse_metadata(
+        &self,
+        response: MetadataResponse,
+    ) -> Result<(String, String, Vec<StatusColumn>)> {
+        let owner = response.data.user.context("Project owner not found")?;
         let project = owner
             .project_v2
             .context("Project not found. Check owner and project number.")?;
@@ -142,7 +158,10 @@ impl GithubClient {
                 format!(
                     "Status field '{}' not found in project. Available single-select fields: {}",
                     self.status_field_name,
-                    project.fields.nodes.iter()
+                    project
+                        .fields
+                        .nodes
+                        .iter()
                         .filter_map(|f| f.name.as_deref())
                         .collect::<Vec<_>>()
                         .join(", ")
@@ -174,22 +193,25 @@ impl GithubClient {
                 "cursor": cursor,
             });
 
-            let parsed: ItemsResponse = self.graphql(queries::PROJECT_ITEMS, &variables).await
+            let parsed: ItemsResponse = self
+                .graphql(queries::PROJECT_ITEMS, &variables)
+                .await
                 .context("Failed to fetch project items")?;
 
-            let project = parsed.data.node.context("Project node not found in items response")?;
+            let project = parsed
+                .data
+                .node
+                .context("Project node not found in items response")?;
             let connection = project.items;
 
             let mut page_count = 0u32;
             let mut skipped = 0u32;
-            for node in &connection.nodes {
-                if let Some(item_node) = node {
-                    if let Some(project_item) = item_node.to_project_item(&self.status_field_name) {
-                        all_items.push(project_item);
-                        page_count += 1;
-                    } else {
-                        skipped += 1;
-                    }
+            for item_node in connection.nodes.iter().flatten() {
+                if let Some(project_item) = item_node.to_project_item(&self.status_field_name) {
+                    all_items.push(project_item);
+                    page_count += 1;
+                } else {
+                    skipped += 1;
                 }
             }
 
