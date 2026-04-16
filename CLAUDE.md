@@ -88,7 +88,8 @@ cargo run
 キャッシュ: `~/.cache/flowbit/cache.json`
 ログ: `~/.local/state/flowbit/flowbit.log`
 
-Token 解決順: `GITHUB_TOKEN` env → `config.toml` の `github.token`
+Token 解決順: `GITHUB_TOKEN` env → `gh auth token` → `config.toml` の `github.token`
+設定ファイル未存在時: テンプレートを自動生成して案内
 
 ## Implementation Phases
 

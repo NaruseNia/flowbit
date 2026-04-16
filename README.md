@@ -22,27 +22,33 @@ cargo install --path .
 ### Requirements
 
 - Rust 1.85+ (edition 2024)
-- A GitHub Personal Access Token with `read:project` scope
+- A GitHub token (one of the following):
+  - `gh auth login` (GitHub CLI, recommended)
+  - `GITHUB_TOKEN` environment variable
+  - Personal Access Token with `read:project` scope
 
 ## Configuration
 
-Create `~/.config/flowbit/config.toml`:
+On first run, flowbit creates a template config at `~/.config/flowbit/config.toml`. Edit it with your project settings:
 
 ```toml
 [github]
-# Token is resolved in order: GITHUB_TOKEN env var → this field
-token = "ghp_your_token_here"
+# Token resolution order:
+#   1. GITHUB_TOKEN environment variable
+#   2. `gh auth token` (GitHub CLI)
+#   3. This field
+# token = "ghp_xxxx"
 
 [project]
 owner = "your-org-or-user"
 number = 1
 status_field = "Status"    # Name of the single-select Status field
 
-[ui]
-default_view = "board"     # "board" or "list"
+# [ui]
+# default_view = "board"   # "board" or "list"
 
-[filter]
-# Optional: filters applied on startup (Esc to clear)
+# [filter]
+# Default filters applied on startup (Esc to clear)
 # assignee = "your-username"
 # labels = ["bug"]
 # kind = "issue"
