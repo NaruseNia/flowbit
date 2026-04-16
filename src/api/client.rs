@@ -1,9 +1,10 @@
 use anyhow::{Context, Result, bail};
 use octocrab::Octocrab;
+use serde::de::DeserializeOwned;
 use tracing::{debug, info, warn};
 
 use super::queries;
-use super::types::{ItemsResponse, MetadataResponse};
+use super::types::{ItemsResponse, MetadataResponse, ProjectListEntry, ProjectListResponse};
 use crate::model::project_item::{ProjectItem, StatusColumn};
 
 pub struct GithubClient {
@@ -39,6 +40,56 @@ impl GithubClient {
         })
     }
 
+    /// Set project number (used after interactive selection).
+    pub fn set_project_number(&mut self, number: u32) {
+        self.project_number = number;
+    }
+
+    // --- GraphQL helper ---
+
+    async fn graphql<T: DeserializeOwned>(&self, query: &str, variables: &serde_json::Value) -> Result<T> {
+        let response: serde_json::Value = self
+            .octocrab
+            .graphql(&serde_json::json!({
+                "query": query,
+                "variables": variables,
+            }))
+            .await
+            .context("GraphQL request failed")?;
+
+        if let Some(errors) = response.get("errors") {
+            bail!("GraphQL errors: {}", errors);
+        }
+
+        serde_json::from_value(response).context("Failed to parse GraphQL response")
+    }
+
+    // --- Project list ---
+
+    /// Fetch the list of projects for the configured owner.
+    /// Tries user first, then organization.
+    pub async fn list_projects(&self) -> Result<Vec<ProjectListEntry>> {
+        let variables = serde_json::json!({ "owner": self.owner });
+
+        // Try as user
+        if let Ok(resp) = self.graphql::<ProjectListResponse>(queries::LIST_PROJECTS_USER, &variables).await {
+            if let Some(owner) = resp.data.user {
+                return Ok(owner.projects_v2.nodes);
+            }
+        }
+
+        // Fallback to organization
+        debug!("User query failed, trying organization");
+        let resp = self.graphql::<ProjectListResponse>(queries::LIST_PROJECTS_ORG, &variables)
+            .await
+            .context("Failed to list projects (tried both user and organization)")?;
+
+        let owner = resp.data.user.context("Owner not found")?;
+        Ok(owner.projects_v2.nodes)
+    }
+
+    // --- Project data ---
+
     /// Fetch all project data: metadata + items.
     pub async fn fetch_project(&self) -> Result<ProjectData> {
         let (project_id, project_title, status_columns) = self.fetch_metadata().await?;
@@ -56,46 +107,24 @@ impl GithubClient {
     async fn fetch_metadata(&self) -> Result<(String, String, Vec<StatusColumn>)> {
         info!(owner = %self.owner, number = self.project_number, "Fetching project metadata");
 
-        // Try as user first
-        let result = self.try_fetch_metadata(queries::PROJECT_METADATA).await;
-        if let Ok(data) = result {
-            return self.parse_metadata(data);
-        }
-
-        // Fallback to organization
-        debug!("User query failed, trying organization query");
-        let data = self
-            .try_fetch_metadata(queries::PROJECT_METADATA_ORG)
-            .await
-            .context("Failed to fetch project metadata (tried both user and organization)")?;
-        self.parse_metadata(data)
-    }
-
-    async fn try_fetch_metadata(&self, query: &str) -> Result<MetadataResponse> {
         let variables = serde_json::json!({
             "owner": self.owner,
             "number": self.project_number as i64,
         });
 
-        let response: serde_json::Value = self
-            .octocrab
-            .graphql(&serde_json::json!({
-                "query": query,
-                "variables": variables,
-            }))
-            .await
-            .context("GraphQL request failed")?;
-
-        debug!("Metadata response received");
-
-        // Check for GraphQL errors
-        if let Some(errors) = response.get("errors") {
-            bail!("GraphQL errors: {}", errors);
+        // Try as user first
+        if let Ok(data) = self.graphql::<MetadataResponse>(queries::PROJECT_METADATA, &variables).await {
+            if let Ok(result) = self.parse_metadata(data) {
+                return Ok(result);
+            }
         }
 
-        let parsed: MetadataResponse =
-            serde_json::from_value(response).context("Failed to parse metadata response")?;
-        Ok(parsed)
+        // Fallback to organization
+        debug!("User query failed, trying organization query");
+        let data = self.graphql::<MetadataResponse>(queries::PROJECT_METADATA_ORG, &variables)
+            .await
+            .context("Failed to fetch project metadata (tried both user and organization)")?;
+        self.parse_metadata(data)
     }
 
     fn parse_metadata(&self, response: MetadataResponse) -> Result<(String, String, Vec<StatusColumn>)> {
@@ -145,21 +174,8 @@ impl GithubClient {
                 "cursor": cursor,
             });
 
-            let response: serde_json::Value = self
-                .octocrab
-                .graphql(&serde_json::json!({
-                    "query": queries::PROJECT_ITEMS,
-                    "variables": variables,
-                }))
-                .await
-                .context("GraphQL items request failed")?;
-
-            if let Some(errors) = response.get("errors") {
-                bail!("GraphQL errors fetching items: {}", errors);
-            }
-
-            let parsed: ItemsResponse =
-                serde_json::from_value(response).context("Failed to parse items response")?;
+            let parsed: ItemsResponse = self.graphql(queries::PROJECT_ITEMS, &variables).await
+                .context("Failed to fetch project items")?;
 
             let project = parsed.data.node.context("Project node not found in items response")?;
             let connection = project.items;

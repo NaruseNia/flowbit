@@ -1,3 +1,37 @@
+/// Query to list projects for a user.
+pub const LIST_PROJECTS_USER: &str = r#"
+query($owner: String!) {
+  user(login: $owner) {
+    projectsV2(first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      nodes {
+        number
+        title
+        shortDescription
+        closed
+        items { totalCount }
+      }
+    }
+  }
+}
+"#;
+
+/// Query to list projects for an organization.
+pub const LIST_PROJECTS_ORG: &str = r#"
+query($owner: String!) {
+  organization(login: $owner) {
+    projectsV2(first: 50, orderBy: {field: UPDATED_AT, direction: DESC}) {
+      nodes {
+        number
+        title
+        shortDescription
+        closed
+        items { totalCount }
+      }
+    }
+  }
+}
+"#;
+
 /// Query to fetch project metadata: title and Status field options.
 /// Variables: $owner (String!), $number (Int!), $statusField (String!)
 pub const PROJECT_METADATA: &str = r#"

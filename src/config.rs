@@ -24,7 +24,7 @@ pub struct GithubConfig {
 #[derive(Debug, Deserialize)]
 pub struct ProjectConfig {
     pub owner: String,
-    pub number: u32,
+    pub number: Option<u32>,
     #[serde(default = "default_status_field")]
     pub status_field: String,
 }

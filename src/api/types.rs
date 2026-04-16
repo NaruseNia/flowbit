@@ -3,6 +3,46 @@ use serde::Deserialize;
 
 use crate::model::project_item::{ItemKind, ProjectItem, StatusColumn};
 
+// --- Project List Response ---
+
+#[derive(Debug, Deserialize)]
+pub struct ProjectListResponse {
+    pub data: ProjectListData,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ProjectListData {
+    #[serde(alias = "organization")]
+    pub user: Option<ProjectListOwner>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ProjectListOwner {
+    #[serde(rename = "projectsV2")]
+    pub projects_v2: ProjectListConnection,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ProjectListConnection {
+    pub nodes: Vec<ProjectListEntry>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProjectListEntry {
+    pub number: u32,
+    pub title: String,
+    #[serde(rename = "shortDescription", default)]
+    pub short_description: Option<String>,
+    pub closed: bool,
+    pub items: ItemCount,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ItemCount {
+    #[serde(rename = "totalCount")]
+    pub total_count: u32,
+}
+
 // --- Project Metadata Response ---
 
 #[derive(Debug, Deserialize)]
