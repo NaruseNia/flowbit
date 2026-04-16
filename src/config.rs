@@ -154,9 +154,15 @@ impl Config {
     }
 
     /// Return the config file path: ~/.config/flowbit/config.toml
+    /// Uses $XDG_CONFIG_HOME if set, otherwise ~/.config (not platform-specific).
     pub fn config_path() -> Result<PathBuf> {
-        let config_dir =
-            dirs::config_dir().context("Could not determine config directory")?;
+        let config_dir = if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+            PathBuf::from(xdg)
+        } else {
+            dirs::home_dir()
+                .context("Could not determine home directory")?
+                .join(".config")
+        };
         Ok(config_dir.join("flowbit").join("config.toml"))
     }
 

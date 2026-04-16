@@ -5,10 +5,14 @@ use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberI
 /// Initialize tracing: file-based logging to ~/.local/state/flowbit/flowbit.log.
 /// Returns a guard that must be held for the duration of the program.
 pub fn init() -> Result<WorkerGuard> {
-    let state_dir =
-        dirs::state_dir()
-            .or_else(|| dirs::data_local_dir())
-            .context("Could not determine state directory")?;
+    let state_dir = if let Ok(xdg) = std::env::var("XDG_STATE_HOME") {
+        std::path::PathBuf::from(xdg)
+    } else {
+        dirs::home_dir()
+            .context("Could not determine home directory")?
+            .join(".local")
+            .join("state")
+    };
     let log_dir = state_dir.join("flowbit");
     std::fs::create_dir_all(&log_dir)
         .with_context(|| format!("Failed to create log directory: {}", log_dir.display()))?;

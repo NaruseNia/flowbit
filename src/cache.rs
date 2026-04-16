@@ -20,8 +20,13 @@ pub struct CacheStore {
 
 impl CacheStore {
     pub fn new() -> Result<Self> {
-        let cache_dir =
-            dirs::cache_dir().context("Could not determine cache directory")?;
+        let cache_dir = if let Ok(xdg) = std::env::var("XDG_CACHE_HOME") {
+            std::path::PathBuf::from(xdg)
+        } else {
+            dirs::home_dir()
+                .context("Could not determine home directory")?
+                .join(".cache")
+        };
         let path = cache_dir.join("flowbit").join("cache.json");
         Ok(Self { path })
     }
