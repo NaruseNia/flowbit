@@ -40,8 +40,11 @@ GitHub Project v2 を読み取り専用で閲覧する TUI ツール。
 
 ```toml
 [github]
-# token は GITHUB_TOKEN 環境変数を優先。未設定時のみここを参照
-token = "ghp_xxxx"
+# Token resolution order:
+#   1. GITHUB_TOKEN environment variable
+#   2. `gh auth token` (GitHub CLI)
+#   3. This field
+# token = "ghp_xxxx"
 # GitHub Enterprise 対応用（デフォルト: https://api.github.com）
 api_base_url = "https://api.github.com"
 
@@ -71,8 +74,14 @@ status = "In Progress"
 ### Token Resolution Order
 
 1. `GITHUB_TOKEN` 環境変数
-2. `config.toml` の `github.token`
-3. いずれも未設定 → 起動エラー
+2. `gh auth token`（GitHub CLI）
+3. `config.toml` の `github.token`
+4. いずれも未設定 → 起動エラー
+
+### Config File Auto-Generation
+
+- 設定ファイルが存在しない場合、テンプレートを自動生成して案内メッセージを表示
+- ユーザーが編集後に再度 `flowbit` を実行する流れ
 
 ## UI
 
