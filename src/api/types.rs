@@ -31,14 +31,16 @@ pub struct MetadataProject {
 
 #[derive(Debug, Deserialize)]
 pub struct FieldNodes {
-    pub nodes: Vec<Option<FieldNode>>,
+    pub nodes: Vec<FieldNode>,
 }
 
-/// Only single-select fields are captured (others are null in the union).
+/// Fields in the project. Non-single-select fields appear as empty objects `{}`
+/// from the GraphQL fragment, so all fields are optional.
 #[derive(Debug, Deserialize)]
 pub struct FieldNode {
-    pub id: String,
-    pub name: String,
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(default)]
     pub options: Vec<FieldOption>,
 }
 
@@ -164,19 +166,19 @@ pub struct RepoRef {
 impl MetadataProject {
     /// Extract status columns for the given status field name.
     pub fn status_columns(&self, status_field_name: &str) -> Option<(String, Vec<StatusColumn>)> {
-        for node in &self.fields.nodes {
-            if let Some(field) = node {
-                if field.name == status_field_name {
-                    let columns = field
-                        .options
-                        .iter()
-                        .map(|opt| StatusColumn {
-                            id: opt.id.clone(),
-                            name: opt.name.clone(),
-                        })
-                        .collect();
-                    return Some((field.id.clone(), columns));
-                }
+        for field in &self.fields.nodes {
+            let Some(name) = &field.name else { continue };
+            let Some(id) = &field.id else { continue };
+            if name == status_field_name {
+                let columns = field
+                    .options
+                    .iter()
+                    .map(|opt| StatusColumn {
+                        id: opt.id.clone(),
+                        name: opt.name.clone(),
+                    })
+                    .collect();
+                return Some((id.clone(), columns));
             }
         }
         None

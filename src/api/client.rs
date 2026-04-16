@@ -114,7 +114,7 @@ impl GithubClient {
                     "Status field '{}' not found in project. Available single-select fields: {}",
                     self.status_field_name,
                     project.fields.nodes.iter()
-                        .filter_map(|n| n.as_ref().map(|f| f.name.as_str()))
+                        .filter_map(|f| f.name.as_deref())
                         .collect::<Vec<_>>()
                         .join(", ")
                 )
